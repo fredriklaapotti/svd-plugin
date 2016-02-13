@@ -26,21 +26,28 @@ class svd_widget extends WP_Widget {
 		$instance = wp_parse_args((array)$instance, array('title' => ''));
 		$title = $instance['title'];
 		$listing = $instance['listing'];
+		$future = $instance['future'];
 		?>
 
 		<p>
 		<label for="<?php echo $this->get_field_id('title'); ?>">Title:
-		<input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo attribute_escape($title); ?>"/>
+			<input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo attribute_escape($title); ?>"/>
 		</label>
 		</p>
 
 		<p>
 		<label for="<?php echo $this->get_field_id('text'); ?>">Listing:
 			<select class="widefat" id="<?php echo $this->get_field_id('listing'); ?>" name=<?php echo $this->get_field_name('listing'); ?> type="text">
-				<option value="Today" <?php echo ($listing == 'Today') ? 'selected' : ''; ?>>Today</option>
-				<option value="Week5" <?php echo ($listing == 'Week5') ? 'selected' : ''; ?>>Week (5 days)</option>
+				<option value="Day" <?php echo ($listing == 'Day') ? 'selected' : ''; ?>>Day</option>
+				<option value="Week" <?php echo ($listing == 'Week') ? 'selected' : ''; ?>>Week</option>
 				<option value="Month" <?php echo ($listing == 'Month') ? 'selected' : ''; ?>>Month</option>
 			</select>
+		</label>
+		</p>
+
+		<p>
+		<label for="<?php echo $this->get_field_id('text'); ?>">Future:
+			<input class="widefat" id="<?php echo $this->get_field_id('future'); ?>" name="<?php echo $this->get_field_name('future'); ?>" type="text" value="<?php echo attribute_escape($future); ?>" style="width:50px;"/>
 		</label>
 		</p>
 
@@ -51,6 +58,7 @@ class svd_widget extends WP_Widget {
 		$instance = $old_instance;
 		$instance['title'] = $new_instance['title'];
 		$instance['listing'] = $new_instance['listing'];
+		$instance['future'] = $new_instance['future'];
 		return $instance;
 	}
 
@@ -58,6 +66,7 @@ class svd_widget extends WP_Widget {
 		extract($args, EXTR_SKIP);
 		$title		= empty($instance['title'])	? '' : apply_filters('widget_title', $instance['title']);
 		$listing	= empty($instance['listing'])	? '' : $instance['listing'];
+		$future		= empty($instance['future'])	? '' : $instance['future'];
 
 		// Begin database queries
 		$temp = $wp_query;
@@ -81,30 +90,41 @@ class svd_widget extends WP_Widget {
 		// End database queries
 
 		// Begin date logic
+		setlocale(LC_TIME, "swedish");
+		$dt_today = new DateTime('today');
+		$dt_start = new DateTime();
+		$dt_end = new DateTime();
+
+		if($future != 0) {
+			$dt_start->modify("+" . $future . " " . $listing);
+			$dt_end->modify("+" . $future . " " . $listing);
+		} else {
+			$dt_start->modify('today');
+			$dt_end->modify('today');
+		}
+
 		switch($listing) {
-			case "Today":
-				$end_listing = 1;
+			case "Day":
+				echo "<h3>" . utf8_encode(strftime("%A", $dt_start->getTimestamp())) . "</h3>";
 				break;
-			case "Week5":
-				$end_listing = 5;
+			case "Week":
+				echo "<h3>Vecka " . utf8_encode(strftime("%V", $dt_start->getTimestamp())) . "</h3>";
+				$dt_start->modify("monday this week");
+				$dt_end->modify("sunday this week");
 				break;
 			case "Month":
-				$end_listing = 31;
+				echo "<h3>" . utf8_encode(strftime("%B", $dt_start->getTimestamp())) . "</h3>";
+				$dt_start->modify("first day of this month");
+				$dt_end->modify("last day of this month");
 				break;
 		};
 
-		$one_day = 86400;
-		$today = date("Y-m-d", time() + $one_day * 0);
-		$end_date = date("Y-m-d", time() + $one_day * $end_listing);
-
-		$begin = new DateTime($today);
-		$end = new DateTime($end_date);
 		$interval = DateInterval::createFromDateString('1 day');
-		$period = new DatePeriod($begin, $interval, $end);
+		$period = new DatePeriod($dt_start, $interval, $dt_end);
 		// End date logic
 
 		echo (isset($before_widget) ? $before_widget : '');
-		echo "Your listing: " . $listing . "<br/>";
+		//echo "Your listing: " . $listing . "<br/>dt_start: " . $dt_start->format("Y-m-d") . "<br/>dt_end: " . $dt_end->format("Y-m-d") . "<br/><br/>";
 
 		// Begin display loop
 		foreach($period as $dt) {
@@ -113,7 +133,8 @@ class svd_widget extends WP_Widget {
 					$wp_query->the_post();
 					$postdate = get_post_meta(get_the_ID(), '_svd_sandning_date', true);
 					if($postdate == $dt->format("Y-m-d")) {
-						echo "Date: " . $postdate . " - " . "<a href=" . get_the_permalink() . ">" . get_the_title() . "</a><br/>";
+						get_template_part("templates/content", "post-grid");
+						//echo "Date: " . $postdate . " - " . "<a href=" . get_the_permalink() . ">" . get_the_title() . "</a><br/>";
 					}
 				}
 			}

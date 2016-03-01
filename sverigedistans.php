@@ -89,6 +89,26 @@ class svd_widget extends WP_Widget {
 		));
 		// End database queries
 
+		// Begin WP Events Manager query
+		$wp_q2 = null;
+		$wp_q2 = new WP_Query();
+		$wp_q2->query(array(
+			'post_type'		=> 'event',
+			'meta_query'		=> array(
+				'_event_start_date'	=> array(
+					'key'	=> '_event_start_date',
+				),
+				'_event_start_time'	=> array(
+					'key'	=> '_event_start_time',
+				),
+			),
+			'orderby'		=> array(
+				'event_start_date'	=> 'ASC',
+				'event_start_time'	=> 'ASC',
+			)
+		));
+		// End WP Events Manager query
+
 		// Begin date logic
 		setlocale(LC_TIME, "swedish");
 		$dt_today = new DateTime('today');
@@ -127,12 +147,29 @@ class svd_widget extends WP_Widget {
 		//echo "Your listing: " . $listing . "<br/>dt_start: " . $dt_start->format("Y-m-d") . "<br/>dt_end: " . $dt_end->format("Y-m-d") . "<br/><br/>";
 
 		// Begin display loop
+		/*
 		foreach($period as $dt) {
 			if($wp_query->have_posts()) {
 				while($wp_query->have_posts()) {
 					$wp_query->the_post();
 					$postdate = get_post_meta(get_the_ID(), '_svd_sandning_date', true);
-					if($postdate == $dt->format("Y-m-d")) {
+					if($postdate == $dt->format("Y-m-d") && $postdate >= $dt_today->format("Y-m-d")) {
+						get_template_part("templates/content", "post-grid");
+						//echo "Date: " . $postdate . " - " . "<a href=" . get_the_permalink() . ">" . get_the_title() . "</a><br/>";
+					}
+				}
+			}
+		}
+		*/
+		// End display loop
+
+		// Begin TEST display loop
+		foreach($period as $dt) {
+			if($wp_q2->have_posts()) {
+				while($wp_q2->have_posts()) {
+					$wp_q2->the_post();
+					$postdate = get_post_meta(get_the_ID(), '_event_start_date', true);
+						if($postdate == $dt->format("Y-m-d") && $postdate >= $dt_today->format("Y-m-d")) {
 						get_template_part("templates/content", "post-grid");
 						//echo "Date: " . $postdate . " - " . "<a href=" . get_the_permalink() . ">" . get_the_title() . "</a><br/>";
 					}
@@ -140,6 +177,7 @@ class svd_widget extends WP_Widget {
 			}
 		}
 		// End display loop
+
 
 		echo (isset($after_widget) ? $after_widget : '');
 	}
